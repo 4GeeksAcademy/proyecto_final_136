@@ -26,21 +26,23 @@ export const HOST_CITY_COORDS = {
   "Kansas City": { lat: 39.0997, lng: -94.5786 },
 };
 
-export function coordToVector3(lat, lng, radius = 6.03) {
+export const GLOBE_RADIUS = 6;
+
+export function coordToVector3(lat, lng, radius = GLOBE_RADIUS) {
   const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lng + 180) * (Math.PI / 180) + Math.PI / 2; // ← añade + Math.PI
-  const x = -(radius * Math.sin(phi) * Math.sin(theta));
-  const z = radius * Math.sin(phi) * Math.cos(theta);
-  const y = radius * Math.cos(phi);
+  const theta = (lng + 180) * (Math.PI / 180);
+  const x = -radius * Math.sin(phi) * Math.cos(theta);
+  const y =  radius * Math.cos(phi);
+  const z =  radius * Math.sin(phi) * Math.sin(theta);
   return new THREE.Vector3(x, y, z);
 }
 
 export function latLngToCameraPos(lat, lng, distance = 14) {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lng + 180) * (Math.PI / 180);
-  const x = -(distance * Math.sin(phi) * Math.sin(theta));
-  const z = distance * Math.sin(phi) * Math.cos(theta);
-  const y = distance * Math.cos(phi);
+  const x = -distance * Math.sin(phi) * Math.cos(theta);
+  const y =  distance * Math.cos(phi);
+  const z =  distance * Math.sin(phi) * Math.sin(theta);
   return new THREE.Vector3(x, y, z);
 }
 
@@ -129,8 +131,6 @@ export function Ciudades({ onSelectStadium, selectedTeam, onStatusChange }) {
   const [allMatches, setAllMatches] = useState([]);
   const [stadiums, setStadiums] = useState([]); // sedes de este equipo, en orden cronológico
   const [tourIndex, setTourIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const cameraTarget = useRef(null);
 
   // 1 — Carga el JSON una sola vez
   useEffect(() => {
@@ -174,37 +174,11 @@ export function Ciudades({ onSelectStadium, selectedTeam, onStatusChange }) {
     console.log(`✅ ${selectedTeam}: ${results.length} sedes resueltas`, results);
     setStadiums(results);
     setTourIndex(0);
-    setPaused(false);
     if (onStatusChange) onStatusChange(results.length > 0 ? "ready" : "empty");
   }, [selectedTeam, allMatches]);
 
-  // 3 — Recorrido automático: la cámara "salta" de sede en sede.
-  useEffect(() => {
-    if (stadiums.length === 0 || paused) return;
-
-    const stop = stadiums[tourIndex];
-    cameraTarget.current = latLngToCameraPos(stop.lat, stop.lng, 13);
-    if (onSelectStadium) onSelectStadium(stop);
-
-    if (stadiums.length <= 1) return;
-
-    const timer = setTimeout(() => {
-      setTourIndex((i) => (i + 1) % stadiums.length);
-    }, 3200);
-
-    return () => clearTimeout(timer);
-  }, [stadiums, tourIndex, paused]);
-
-  useFrame(({ camera }) => {
-    if (!cameraTarget.current) return;
-    camera.position.lerp(cameraTarget.current, 0.04);
-    camera.lookAt(0, 0, 0);
-  });
-
   function handleClick(stadium, idx) {
-    setPaused(true);
     setTourIndex(idx);
-    cameraTarget.current = latLngToCameraPos(stadium.lat, stadium.lng, 13);
     if (onSelectStadium) onSelectStadium(stadium);
   }
 

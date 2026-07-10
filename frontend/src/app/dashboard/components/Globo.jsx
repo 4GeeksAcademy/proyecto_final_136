@@ -2,8 +2,9 @@
 import { useMemo } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import { GLOBE_RADIUS } from "./Ciudades";
 
-export function Globo() {
+export function Globo({ children }) {
   const [colorMap, normalMap, specularMap] = useTexture([
     "/textures/color_map.jpg",
     "/textures/normal_map.png",
@@ -28,9 +29,9 @@ export function Globo() {
     }, [colorMap, normalMap, specularMap]);
 
   return (
-    <group rotation={[0, Math.PI, 0]}>
+    <group rotation={[0.75, Math.PI / 18, 0]}>
       <mesh>
-        <sphereGeometry args={[6, 64, 64]} />
+        <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshStandardMaterial
           map={preparedColorMap}
           normalMap={preparedNormalMap}
@@ -39,6 +40,7 @@ export function Globo() {
           roughness={1}
         />
       </mesh>
+      {children}
     </group>
   );
 }

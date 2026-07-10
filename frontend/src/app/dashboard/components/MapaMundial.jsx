@@ -27,12 +27,13 @@ export default function MapaMundial({ selectedTeam }) {
           saturation={0}
           fade
         />
-        <Globo />
-        <Ciudades
-          onSelectStadium={setSelectedStadium}
-          selectedTeam={selectedTeam}
-          onStatusChange={setTourStatus}
-        />
+        <Globo>
+          <Ciudades
+            onSelectStadium={setSelectedStadium}
+            selectedTeam={selectedTeam}
+            onStatusChange={setTourStatus}
+          />
+        </Globo>
         <OrbitControls
           enablePan={false}
           rotateSpeed={0.2}
@@ -40,6 +41,10 @@ export default function MapaMundial({ selectedTeam }) {
           minDistance={8}
           maxDistance={28}
           enableDamping={true}
+          minAzimuthAngle={-Math.PI / 4}
+          maxAzimuthAngle={Math.PI / 4}
+          minPolarAngle={Math.PI / 4}
+          maxPolarAngle={(3 * Math.PI) / 4}
         />
       </Canvas>
 
