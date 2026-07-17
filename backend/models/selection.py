@@ -1,12 +1,13 @@
 from database import db
 
-
 class WorldCupSelection(db.Model):
+    __tablename__ = "world_cup_selection"
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     team_name = db.Column(db.String, nullable=False)
-    group = db.Column(db.String, nullable=False)        # ej. "Grupo A"
-    phase = db.Column(db.String, nullable=False)        # ej. "Final"
+    group = db.Column(db.String, nullable=False)
+    phase = db.Column(db.String, nullable=False)
 
     user = db.relationship('User', backref='selections')
 

@@ -77,3 +77,88 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({"msg": "Usuario eliminado correctamente"}), 200
+
+import secrets
+from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MIMEText
+
+# ... (Tus rutas anteriores de GET, REGISTER, LOGIN, PUT y DELETE se quedan exactamente igual) ...
+
+def send_reset_email(user_email, token):
+    """Función auxiliar para enviar el correo utilizando un servidor SMTP"""
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    sender_email = "tu_correo@gmail.com"
+    sender_password = "tu_contraseña_de_aplicacion" # Token generado en tu cuenta de Google, no tu clave normal
+    
+    # Enlace que apunta directamente a la pantalla que creamos en Next.js
+    reset_url = f"http://localhost:3000/restablecer?token={token}"
+    
+    msg = MIMEText(f"Hola.\n\nHas solicitado restablecer tu contraseña para FIFA 2026 Analytics.\n\n"
+                   f"Haz clic en el siguiente enlace para cambiar tu contraseña:\n{reset_url}\n\n"
+                   f"Este enlace expirará en 15 minutos. Si no fuiste tú, simplemente ignora este mensaje.")
+    
+    msg['Subject'] = "Recuperación de Contraseña - FIFA 2026 Analytics"
+    msg['From'] = sender_email
+    msg['To'] = user_email
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls() # Cifrado seguro TLS
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, user_email, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"Error enviando correo por SMTP: {e}")
+        return False
+
+
+@user_bp.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    body = request.get_json()
+    email = body.get('email').strip()
+
+    user = User.query.filter_by(email=email).first()
+
+    # Seguridad: Si el correo no existe, devolvemos el mismo mensaje de éxito.
+    # Así evitamos que atacantes comprueben qué correos están registrados en tu sistema.
+    if not user:
+        return jsonify({"msg": "Si el correo está registrado, recibirás un enlace de recuperación pronto."})
+
+    # Generamos un token aleatorio seguro y lo guardamos con su expiración (+15 minutos)
+    token = secrets.token_urlsafe(32)
+    user.reset_token = token
+    user.reset_token_expiry = datetime.utcnow() + timedelta(minutes=15)
+    db.session.commit()
+
+    # Intentamos enviar el correo electrónico
+    email_enviado = send_reset_email(user.email, token)
+    if not email_enviado:
+         return jsonify({"msg": "Error al enviar el correo de recuperación"}), 500
+
+    return jsonify({"msg": "Si el correo está registrado, recibirás un enlace de recuperación pronto."})
+
+
+@user_bp.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    body = request.get_json()
+    token = body.get('token')
+    new_password = body.get('password')
+
+    # Buscamos al usuario que posee ese token único
+    user = User.query.filter_by(reset_token=token).first()
+
+    # Validamos que el token exista en nuestra BD y que la hora actual no supere el límite de expiración
+    if not user or user.reset_token_expiry < datetime.utcnow():
+        return jsonify({"msg": "El enlace es inválido o ha expirado"}), 400
+
+    # Hasheamos la nueva contraseña usando la misma función que usas en el registro
+    user.password = generate_password_hash(new_password)
+    
+    # Limpiamos los campos para que este token quede inutilizable de inmediato
+    user.reset_token = None
+    user.reset_token_expiry = None
+    db.session.commit()
+
+    return jsonify({"msg": "Contraseña actualizada correctamente"}), 200
